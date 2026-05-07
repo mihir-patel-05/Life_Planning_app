@@ -50,7 +50,7 @@ export default async function AccountPage() {
             margin: "0 0 32px",
           }}
         >
-          {user.email}
+          {user.email ?? user.user_metadata?.full_name ?? "No email provided"}
         </h1>
         <div
           style={{
