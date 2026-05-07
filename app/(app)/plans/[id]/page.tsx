@@ -2,14 +2,21 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPlanById } from "@/lib/db/queries/plans";
+import { listByPlan } from "@/lib/db/queries/milestones";
 import { ArcShell } from "@/components/arc/arc-shell";
 import {
   ArcLogo,
   Eyebrow,
   Ghost,
   Icon,
-  Primary,
 } from "@/components/arc/primitives";
+import { AddMilestoneButton } from "@/components/milestones/add-milestone-button";
+import { MilestoneList } from "@/components/milestones/milestone-list";
+import type { MilestoneRowData } from "@/components/milestones/milestone-row";
+import {
+  STATUS_LABEL,
+  type MilestoneStatus,
+} from "@/lib/validation/milestones";
 
 export default async function PlanPage({
   params,
@@ -30,7 +37,20 @@ export default async function PlanPage({
   const plan = await getPlanById(id, user.id);
   if (!plan) notFound();
 
+  const rows = await listByPlan(plan.id, user.id);
+  const milestones: MilestoneRowData[] = rows.map((m) => ({
+    id: m.id,
+    planId: m.planId,
+    title: m.title,
+    description: m.description,
+    targetDate: m.targetDate,
+    completedDate: m.completedDate,
+    status: m.status as MilestoneStatus,
+    category: m.category,
+  }));
+
   const accent = plan.color ?? "var(--gold)";
+  const counts = countByStatus(milestones);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-1)" }}>
@@ -83,41 +103,114 @@ export default async function PlanPage({
           />
           <Eyebrow>Plan</Eyebrow>
         </div>
-        <h1
+
+        <div
           style={{
-            fontFamily: "var(--font-geist-sans)",
-            fontWeight: 500,
-            fontSize: 44,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.05,
-            margin: "0 0 16px",
-            color: "var(--ink-0)",
-            maxWidth: 720,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            gap: 32,
+            flexWrap: "wrap",
+            marginBottom: 28,
           }}
         >
-          {plan.title}
-        </h1>
-        {plan.description && (
-          <div
-            style={{
-              fontSize: 15,
-              color: "var(--ink-2)",
-              lineHeight: 1.6,
-              maxWidth: 640,
-              marginBottom: 32,
-            }}
-          >
-            {plan.description}
+          <div>
+            <h1
+              style={{
+                fontFamily: "var(--font-geist-sans)",
+                fontWeight: 500,
+                fontSize: 44,
+                letterSpacing: "-0.03em",
+                lineHeight: 1.05,
+                margin: "0 0 12px",
+                color: "var(--ink-0)",
+                maxWidth: 720,
+              }}
+            >
+              {plan.title}
+            </h1>
+            {plan.description && (
+              <div
+                style={{
+                  fontSize: 15,
+                  color: "var(--ink-2)",
+                  lineHeight: 1.6,
+                  maxWidth: 640,
+                }}
+              >
+                {plan.description}
+              </div>
+            )}
           </div>
-        )}
+          <AddMilestoneButton planId={plan.id} />
+        </div>
 
-        <EmptyMilestones />
+        {milestones.length === 0 ? (
+          <EmptyMilestones planId={plan.id} />
+        ) : (
+          <>
+            <StatusSummary counts={counts} total={milestones.length} />
+            <MilestoneList milestones={milestones} />
+          </>
+        )}
       </main>
     </div>
   );
 }
 
-function EmptyMilestones() {
+function countByStatus(milestones: MilestoneRowData[]) {
+  const out: Record<MilestoneStatus, number> = {
+    not_started: 0,
+    in_progress: 0,
+    completed: 0,
+    blocked: 0,
+    abandoned: 0,
+  };
+  for (const m of milestones) out[m.status] += 1;
+  return out;
+}
+
+function StatusSummary({
+  counts,
+  total,
+}: {
+  counts: Record<MilestoneStatus, number>;
+  total: number;
+}) {
+  const entries: { status: MilestoneStatus; n: number }[] = (
+    Object.keys(counts) as MilestoneStatus[]
+  )
+    .map((s) => ({ status: s, n: counts[s] }))
+    .filter((e) => e.n > 0);
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 18,
+        marginBottom: 18,
+        fontFamily: "var(--font-geist-mono)",
+        fontSize: 11,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--ink-3)",
+      }}
+    >
+      <span>{total} total</span>
+      {entries.map((e) => (
+        <span
+          key={e.status}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          {e.n} {STATUS_LABEL[e.status]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function EmptyMilestones({ planId }: { planId: string }) {
   return (
     <div
       style={{
@@ -151,15 +244,10 @@ function EmptyMilestones() {
           margin: "0 auto 24px",
         }}
       >
-        Milestones — the events, decisions, and goals that anchor this arc —
-        ship in the next phase. For now, the plan’s identity is saved and you
-        can rename or recolor it from settings.
+        A milestone is a single anchor point — a decision, an event, a goal
+        with a target date. Add a few and they’ll line up by date below.
       </div>
-      <Primary disabled aria-disabled="true" title="Milestones ship in Phase 3">
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon kind="plus" size={13} /> Add milestone
-        </span>
-      </Primary>
+      <AddMilestoneButton planId={planId} />
     </div>
   );
 }
