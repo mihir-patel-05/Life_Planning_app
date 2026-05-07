@@ -190,6 +190,7 @@ export function Primary({
   style,
   ...rest
 }: ButtonBaseProps) {
+  const isDisabled = rest.disabled;
   return (
     <button
       {...rest}
@@ -203,7 +204,9 @@ export function Primary({
         color: "var(--bg-0)",
         background: "var(--gold)",
         border: "1px solid var(--gold)",
-        boxShadow: "0 6px 24px rgba(212,168,90,0.18)",
+        boxShadow: isDisabled ? "none" : "0 6px 24px rgba(212,168,90,0.18)",
+        opacity: isDisabled ? 0.5 : 1,
+        cursor: isDisabled ? "not-allowed" : "pointer",
         transition: "all .15s ease",
         ...style,
       }}

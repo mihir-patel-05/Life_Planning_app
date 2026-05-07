@@ -84,7 +84,11 @@ export default async function DashboardPage() {
               Pick a thread to keep drawing.
             </h1>
           </div>
-          <Primary>
+          <Primary
+            disabled
+            aria-disabled="true"
+            title="Plan creation ships in Phase 2"
+          >
             <span
               style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
             >
