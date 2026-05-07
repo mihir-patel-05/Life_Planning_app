@@ -2,13 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/lib/actions/auth";
+import { listPlans } from "@/lib/db/queries/plans";
 import {
   ArcLogo,
   Eyebrow,
   Ghost,
-  Icon,
-  Primary,
 } from "@/components/arc/primitives";
+import { CreatePlanDialog } from "@/components/plans/create-plan-dialog";
+import { PlanCard } from "@/components/plans/plan-card";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -17,9 +18,8 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // TODO(phase-2): query plans for this user via Drizzle.
-  const plans: Array<{ id: string; title: string; description?: string | null }> =
-    [];
+  const userPlans = await listPlans(user.id);
+  const identity = user.email ?? user.user_metadata?.full_name ?? "";
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-1)" }}>
@@ -40,17 +40,21 @@ export default async function DashboardPage() {
             gap: 14,
           }}
         >
-          <span
-            style={{
-              fontFamily: "var(--font-geist-mono)",
-              fontSize: 11,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "var(--ink-3)",
-            }}
-          >
-            {user.email}
-          </span>
+          {identity && (
+            <Link
+              href="/account"
+              style={{
+                fontFamily: "var(--font-geist-mono)",
+                fontSize: 11,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "var(--ink-3)",
+                textDecoration: "none",
+              }}
+            >
+              {identity}
+            </Link>
+          )}
           <form action={logout}>
             <Ghost type="submit">Sign out</Ghost>
           </form>
@@ -84,138 +88,90 @@ export default async function DashboardPage() {
               Pick a thread to keep drawing.
             </h1>
           </div>
-          <Primary
-            disabled
-            aria-disabled="true"
-            title="Plan creation ships in Phase 2"
-          >
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-            >
-              <Icon kind="plus" size={13} /> New plan
-            </span>
-          </Primary>
+          <CreatePlanDialog />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <Link
-            href="/plans/demo"
+        {userPlans.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div
             style={{
-              textDecoration: "none",
-              color: "inherit",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {userPlans.map((p) => (
+              <PlanCard
+                key={p.id}
+                href={`/plans/${p.id}`}
+                title={p.title}
+                description={p.description}
+                color={p.color}
+              />
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginTop: 48 }}>
+          <Eyebrow style={{ marginBottom: 14 }}>Sample arc</Eyebrow>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 16,
             }}
           >
             <PlanCard
+              href="/plans/demo"
               title="Career & life"
-              description="Maya’s default arc — the demo plan from the design."
+              description="Maya’s default arc — the demo plan from the design. Read-only preview."
+              color="#D4A85A"
+              badge="Sample"
             />
-          </Link>
-
-          {plans.map((p) => (
-            <Link
-              key={p.id}
-              href={`/plans/${p.id}`}
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
-              <PlanCard
-                title={p.title}
-                description={p.description ?? undefined}
-              />
-            </Link>
-          ))}
-        </div>
-
-        <div
-          style={{
-            marginTop: 40,
-            padding: 28,
-            background: "var(--bg-2)",
-            border: "1px dashed var(--line)",
-            borderRadius: 12,
-            color: "var(--ink-3)",
-            fontFamily: "var(--font-geist-mono)",
-            fontSize: 12,
-            letterSpacing: "0.04em",
-          }}
-        >
-          Plan persistence ships in the next phase. The “Career &amp; life”
-          card opens the Arc design with seed data so you can explore the
-          timeline today.
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-function PlanCard({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
+function EmptyState() {
   return (
     <div
       style={{
+        padding: "56px 32px",
         background: "var(--bg-2)",
-        border: "1px solid var(--line)",
-        borderRadius: 12,
-        padding: 22,
-        cursor: "pointer",
-        transition: "all .15s ease",
-        minHeight: 140,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
+        border: "1px dashed var(--line)",
+        borderRadius: 14,
+        textAlign: "center",
       }}
     >
-      <div>
-        <Eyebrow style={{ marginBottom: 10 }}>Plan</Eyebrow>
-        <div
-          style={{
-            fontFamily: "var(--font-geist-sans)",
-            fontWeight: 500,
-            fontSize: 22,
-            letterSpacing: "-0.02em",
-            lineHeight: 1.2,
-            color: "var(--ink-0)",
-            marginBottom: 8,
-          }}
-        >
-          {title}
-        </div>
-        {description && (
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--ink-2)",
-              lineHeight: 1.5,
-            }}
-          >
-            {description}
-          </div>
-        )}
+      <Eyebrow style={{ marginBottom: 14 }}>Empty canvas</Eyebrow>
+      <div
+        style={{
+          fontFamily: "var(--font-geist-sans)",
+          fontWeight: 500,
+          fontSize: 22,
+          letterSpacing: "-0.02em",
+          color: "var(--ink-0)",
+          marginBottom: 10,
+        }}
+      >
+        No plans yet.
       </div>
       <div
         style={{
-          marginTop: 18,
-          fontFamily: "var(--font-geist-mono)",
-          fontSize: 11,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "var(--gold-soft)",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
+          fontSize: 13,
+          color: "var(--ink-2)",
+          lineHeight: 1.6,
+          maxWidth: 420,
+          margin: "0 auto",
         }}
       >
-        Open <Icon kind="arrow" size={11} />
+        Start with a single thread — career, education, family, anything you’re
+        thinking about over the next decade. You can split it into branches
+        later.
       </div>
     </div>
   );
