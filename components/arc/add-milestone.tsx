@@ -38,6 +38,7 @@ export function AddMilestone({
       status: "planned",
       branch: null,
     });
+    onClose();
   };
 
   return (
