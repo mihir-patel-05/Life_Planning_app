@@ -19,6 +19,11 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const userPlans = await listPlans(user.id);
+
+  // First-time visitors land in onboarding so the timeline can be anchored
+  // to their age before they ever see an empty plan list.
+  if (userPlans.length === 0) redirect("/onboarding");
+
   const identity = user.email ?? user.user_metadata?.full_name ?? "";
 
   return (
