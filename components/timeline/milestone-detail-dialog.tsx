@@ -406,6 +406,7 @@ function DeleteForm({
   onDeleted: () => void;
 }) {
   const [confirming, setConfirming] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   if (!confirming) {
     return (
       <Ghost
@@ -421,10 +422,26 @@ function DeleteForm({
   return (
     <form
       action={async (formData) => {
-        await deleteMilestone(formData);
-        onDeleted();
+        setError(null);
+        try {
+          await deleteMilestone(formData);
+          onDeleted();
+        } catch (e) {
+          // Let Next.js redirect/notFound exceptions through so navigation
+          // (e.g. expired-session → /login) still happens.
+          const digest = (e as { digest?: unknown } | null)?.digest;
+          if (typeof digest === "string" && digest.startsWith("NEXT_")) {
+            throw e;
+          }
+          setError("Could not delete this milestone. Try again.");
+        }
       }}
-      style={{ display: "inline-flex", gap: 8, alignItems: "center" }}
+      style={{
+        display: "inline-flex",
+        gap: 8,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
     >
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="planId" value={planId} />
@@ -436,7 +453,7 @@ function DeleteForm({
           color: "var(--branch-b)",
         }}
       >
-        Delete this milestone?
+        {error ?? "Delete this milestone?"}
       </span>
       <Ghost type="button" onClick={() => setConfirming(false)}>
         Keep
@@ -455,7 +472,7 @@ function DeleteForm({
           cursor: "pointer",
         }}
       >
-        Delete
+        {error ? "Try again" : "Delete"}
       </button>
     </form>
   );
