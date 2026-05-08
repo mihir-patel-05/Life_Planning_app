@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPlanById } from "@/lib/db/queries/plans";
-import { listByPlan } from "@/lib/db/queries/milestones";
+import { listByPlan as listMilestonesByPlan } from "@/lib/db/queries/milestones";
+import { listByPlan as listBucketByPlan } from "@/lib/db/queries/bucket";
 import { ArcShell } from "@/components/arc/arc-shell";
 import { PlanView } from "@/components/timeline/plan-view";
 
@@ -24,7 +25,10 @@ export default async function PlanPage({
   const plan = await getPlanById(id, user.id);
   if (!plan) notFound();
 
-  const milestones = await listByPlan(plan.id, user.id);
+  const [milestones, bucket] = await Promise.all([
+    listMilestonesByPlan(plan.id, user.id),
+    listBucketByPlan(plan.id, user.id),
+  ]);
 
-  return <PlanView plan={plan} milestones={milestones} />;
+  return <PlanView plan={plan} milestones={milestones} bucket={bucket} />;
 }

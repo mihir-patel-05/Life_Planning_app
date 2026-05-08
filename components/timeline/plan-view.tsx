@@ -11,20 +11,21 @@ import {
   Primary,
 } from "@/components/arc/primitives";
 import { TimelineView } from "@/components/arc/timeline";
+import { BucketView } from "@/components/bucket/bucket-view";
 import { AddMilestoneDialog } from "./add-milestone-dialog";
 import { MilestoneDetailDialog } from "./milestone-detail-dialog";
 import { dbToArcMilestone, planToArcUser } from "./adapter";
-import type { Milestone, Plan } from "@/lib/db";
+import type { BucketItem, Milestone, Plan } from "@/lib/db";
 
 interface PlanViewProps {
   plan: Plan;
   milestones: Milestone[];
-  bucketSlot?: React.ReactNode;
+  bucket: BucketItem[];
 }
 
 type View = "timeline" | "bucket";
 
-export function PlanView({ plan, milestones, bucketSlot }: PlanViewProps) {
+export function PlanView({ plan, milestones, bucket }: PlanViewProps) {
   const [view, setView] = React.useState<View>("timeline");
   const [addingAtAge, setAddingAtAge] = React.useState<number | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -71,7 +72,7 @@ export function PlanView({ plan, milestones, bucketSlot }: PlanViewProps) {
             onAdd={() => setAddingAtAge(user.currentAge)}
             philosophy={plan.philosophy}
           />
-          {bucketSlot ?? <BucketEmptyPlaceholder />}
+          <BucketView planId={plan.id} items={bucket} />
         </div>
       )}
 
@@ -222,42 +223,3 @@ function PlanTimelineHeader({
   );
 }
 
-function BucketEmptyPlaceholder() {
-  return (
-    <div
-      style={{
-        margin: "0 64px",
-        padding: "80px 40px",
-        background: "var(--bg-2)",
-        border: "1px dashed var(--line)",
-        borderRadius: 14,
-        textAlign: "center",
-      }}
-    >
-      <Eyebrow style={{ marginBottom: 14 }}>Bucket list</Eyebrow>
-      <div
-        style={{
-          fontFamily: "var(--font-geist-sans)",
-          fontWeight: 500,
-          fontSize: 22,
-          color: "var(--ink-0)",
-          marginBottom: 8,
-        }}
-      >
-        Coming next.
-      </div>
-      <div
-        style={{
-          fontSize: 13,
-          color: "var(--ink-2)",
-          lineHeight: 1.6,
-          maxWidth: 460,
-          margin: "0 auto",
-        }}
-      >
-        The bucket list view is wired in step 4 of Phase 4 — it&rsquo;ll let you
-        track loose dreams that don&rsquo;t need a date yet.
-      </div>
-    </div>
-  );
-}
