@@ -20,11 +20,18 @@ const optionalAge = z
   )
   .optional();
 
-const doneBit = z.coerce
-  .number()
-  .int()
-  .min(0, "Invalid value")
-  .max(1, "Invalid value");
+// Coerce only when the field is actually present. Without the preprocess,
+// FormData.get("done") returns null when the input is absent and z.coerce
+// would turn that into 0 — silently resetting the done flag on update.
+const doneBit = z.preprocess(
+  (v) => (v === "" || v === null || v === undefined ? undefined : v),
+  z.coerce
+    .number()
+    .int("Invalid value")
+    .min(0, "Invalid value")
+    .max(1, "Invalid value")
+    .optional(),
+);
 
 export const createBucketItemSchema = z.object({
   planId: z.string().uuid("Invalid plan id"),
