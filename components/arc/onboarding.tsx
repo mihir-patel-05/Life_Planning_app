@@ -21,9 +21,25 @@ const SAMPLE_GOALS = [
   "Home & place",
 ];
 
-export function OnboardingView({ onFinish }: { onFinish: () => void }) {
+export type OnboardingPayload = {
+  age: number;
+  philosophy: string;
+  categories: string[];
+};
+
+export function OnboardingView({
+  initialAge = 21,
+  onFinish,
+  pending = false,
+  errorMessage,
+}: {
+  initialAge?: number;
+  onFinish: (data: OnboardingPayload) => void;
+  pending?: boolean;
+  errorMessage?: string;
+}) {
   const [step, setStep] = React.useState(0);
-  const [age, setAge] = React.useState(21);
+  const [age, setAge] = React.useState(initialAge);
   const [philosophy, setPhilosophy] = React.useState("");
   const [picked, setPicked] = React.useState<string[]>([]);
 
@@ -276,7 +292,17 @@ export function OnboardingView({ onFinish }: { onFinish: () => void }) {
                 </span>
               </Primary>
             ) : (
-              <Primary onClick={onFinish}>
+              <Primary
+                onClick={() =>
+                  !pending &&
+                  onFinish({
+                    age,
+                    philosophy: philosophy.trim(),
+                    categories: picked,
+                  })
+                }
+                disabled={pending}
+              >
                 <span
                   style={{
                     display: "inline-flex",
@@ -284,11 +310,32 @@ export function OnboardingView({ onFinish }: { onFinish: () => void }) {
                     gap: 8,
                   }}
                 >
-                  Begin my arc <Icon kind="arrow" size={13} />
+                  {pending ? "Beginning…" : "Begin my arc"}{" "}
+                  <Icon kind="arrow" size={13} />
                 </span>
               </Primary>
             )}
           </div>
+
+          {errorMessage && (
+            <div
+              role="alert"
+              style={{
+                marginTop: 18,
+                fontFamily: "var(--font-geist-mono)",
+                fontSize: 11,
+                letterSpacing: "0.04em",
+                color: "var(--branch-b)",
+                padding: "10px 12px",
+                border: "1px solid rgba(201,138,107,0.4)",
+                borderRadius: 8,
+                background: "rgba(201,138,107,0.06)",
+                maxWidth: 520,
+              }}
+            >
+              {errorMessage}
+            </div>
+          )}
         </div>
 
         <div

@@ -64,6 +64,7 @@ export function ArcShell() {
           setView={setView}
           onSelectMilestone={setSelectedMilestone}
           onAddAtAge={(age) => setAddingAtAge(age)}
+          showBranchScaffold
         />
       )}
 

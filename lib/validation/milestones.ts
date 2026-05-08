@@ -37,6 +37,12 @@ export const CATEGORY_PRESETS = [
   "home",
 ] as const;
 
+export const SEASONS = ["Spring", "Summer", "Fall", "Winter", "—"] as const;
+export type Season = (typeof SEASONS)[number];
+
+export const BRANCHES = ["a", "b"] as const;
+export type Branch = (typeof BRANCHES)[number];
+
 const isoDate = z
   .string()
   .trim()
@@ -52,6 +58,32 @@ const optionalString = (max: number, msg = "Too long") =>
     .optional()
     .transform((v) => (v && v.length > 0 ? v : undefined));
 
+const optionalAge = z
+  .preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce
+      .number()
+      .int("Age must be a whole number")
+      .min(0, "Age can't be negative")
+      .max(120, "Age is too high")
+      .optional(),
+  )
+  .optional();
+
+const optionalSeason = z
+  .preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.enum(SEASONS).optional(),
+  )
+  .optional();
+
+const optionalBranch = z
+  .preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.enum(BRANCHES).optional(),
+  )
+  .optional();
+
 export const createMilestoneSchema = z.object({
   planId: z.string().uuid("Invalid plan id"),
   title: z
@@ -64,6 +96,9 @@ export const createMilestoneSchema = z.object({
   completedDate: isoDate,
   status: z.enum(MILESTONE_STATUSES),
   category: optionalString(40, "Category is too long"),
+  ageAt: optionalAge,
+  season: optionalSeason,
+  branch: optionalBranch,
 });
 
 export const updateMilestoneSchema = createMilestoneSchema
@@ -79,3 +114,11 @@ export const deleteMilestoneSchema = z.object({
 
 export type CreateMilestoneInput = z.infer<typeof createMilestoneSchema>;
 export type UpdateMilestoneInput = z.infer<typeof updateMilestoneSchema>;
+
+export const SEASON_TO_MONTH: Record<Season, string> = {
+  Spring: "03",
+  Summer: "06",
+  Fall: "09",
+  Winter: "12",
+  "—": "01",
+};

@@ -333,6 +333,7 @@ interface HorizontalTimelineProps {
   milestones: ArcMilestone[];
   onSelectMilestone: (m: ArcMilestone) => void;
   onAddAtAge: (age: number) => void;
+  showBranchScaffold?: boolean;
 }
 
 function HorizontalTimeline({
@@ -340,16 +341,30 @@ function HorizontalTimeline({
   milestones,
   onSelectMilestone,
   onAddAtAge,
+  showBranchScaffold = false,
 }: HorizontalTimelineProps) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const [hoverAge, setHoverAge] = React.useState<number | null>(null);
 
+  const isEmpty = milestones.length === 0;
   const occupiedAges = new Set(milestones.map((m) => m.age));
-  const decadeAges = [20, 30, 40, 50, 60, 70];
+  // When the plan has milestones we anchor on a 30-year forward horizon at
+  // decade boundaries; when it's empty we show only the current age so the
+  // canvas reads as a clean starting point rather than a future skeleton.
+  const decadeAnchors: number[] = [];
+  if (!isEmpty) {
+    for (
+      let a = Math.ceil(user.currentAge / 10) * 10;
+      a <= user.currentAge + 30;
+      a += 10
+    ) {
+      if (a > user.currentAge) decadeAnchors.push(a);
+    }
+  }
   const anchors = new Set<number>([
     ...occupiedAges,
     user.currentAge,
-    ...decadeAges,
+    ...decadeAnchors,
   ]);
   const ages = [...anchors].sort((a, b) => a - b);
 
@@ -362,7 +377,8 @@ function HorizontalTimeline({
   React.useEffect(() => {
     if (scrollRef.current) {
       const nowIdx = ages.indexOf(user.currentAge);
-      scrollRef.current.scrollLeft = Math.max(0, ageX(nowIdx) - 280);
+      const safeIdx = nowIdx >= 0 ? nowIdx : 0;
+      scrollRef.current.scrollLeft = Math.max(0, ageX(safeIdx) - 280);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -380,15 +396,46 @@ function HorizontalTimeline({
     sideMap[a] = i % 2 === 0 ? "below" : "above";
   });
 
-  const branchAges = [22, 23, 24];
+  const branchAges = showBranchScaffold ? [22, 23, 24] : [];
   const branchAIdxs = branchAges.map((a) => ages.indexOf(a));
-  const branchAStart = ageX(branchAIdxs[0]) + 100;
-  const branchAEnd = ageX(branchAIdxs[branchAIdxs.length - 1]) + 100;
-  const forkStartX = ageX(ages.indexOf(21)) + 100;
-  const reconvergeX = ageX(ages.indexOf(25)) + 100;
+  const branchAStart = showBranchScaffold ? ageX(branchAIdxs[0]) + 100 : 0;
+  const branchAEnd = showBranchScaffold
+    ? ageX(branchAIdxs[branchAIdxs.length - 1]) + 100
+    : 0;
+  const forkStartX = showBranchScaffold ? ageX(ages.indexOf(21)) + 100 : 0;
+  const reconvergeX = showBranchScaffold ? ageX(ages.indexOf(25)) + 100 : 0;
 
-  const branchA = milestones.filter((m) => m.branch === "a");
-  const branchB = milestones.filter((m) => m.branch === "b");
+  // For real plans we don't render the dramatic fork/reconverge SVG (that's
+  // bound to specific Maya-demo ages). Branch milestones still get coloured
+  // borders, but they sit in the regular trunk slots above/below the spine.
+  const branchA = showBranchScaffold
+    ? milestones.filter((m) => m.branch === "a")
+    : [];
+  const branchB = showBranchScaffold
+    ? milestones.filter((m) => m.branch === "b")
+    : [];
+
+  // Without the scaffold, branch=a/b cards fall back into the trunk layout so
+  // they're not lost. The HCard styling keeps the gold "active" / line-through
+  // "done" treatments regardless.
+  if (!showBranchScaffold) {
+    milestones
+      .filter((m) => m.branch !== null)
+      .forEach((m) => {
+        trunkByAge[m.age] = trunkByAge[m.age] || [];
+        trunkByAge[m.age].push(m);
+      });
+  }
+
+  if (isEmpty) {
+    return (
+      <EmptyTimeline
+        currentAge={user.currentAge}
+        birthYear={user.birthYear}
+        onAdd={() => onAddAtAge(user.currentAge)}
+      />
+    );
+  }
 
   return (
     <div
@@ -424,24 +471,26 @@ function HorizontalTimeline({
         }}
       />
 
-      <div
-        style={{
-          position: "absolute",
-          top: 24,
-          right: 80,
-          zIndex: 6,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          fontFamily: "var(--font-geist-mono)",
-          fontSize: 10,
-          letterSpacing: "0.1em",
-          color: "var(--ink-3)",
-          textTransform: "uppercase",
-        }}
-      >
-        Scroll <Icon kind="arrow" size={12} />
-      </div>
+      {!isEmpty && (
+        <div
+          style={{
+            position: "absolute",
+            top: 24,
+            right: 80,
+            zIndex: 6,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            fontFamily: "var(--font-geist-mono)",
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            color: "var(--ink-3)",
+            textTransform: "uppercase",
+          }}
+        >
+          Scroll <Icon kind="arrow" size={12} />
+        </div>
+      )}
 
       <div
         ref={scrollRef}
@@ -475,7 +524,8 @@ function HorizontalTimeline({
               position: "absolute",
               left: 0,
               top: SPINE_Y - 1,
-              width: ageX(ages.indexOf(user.currentAge)) + 100,
+              width:
+                ageX(Math.max(0, ages.indexOf(user.currentAge))) + 100,
               height: 2.5,
               background: "var(--gold)",
               opacity: 0.9,
@@ -610,7 +660,8 @@ function HorizontalTimeline({
               ));
             })}
 
-          {/* Fork SVG paths */}
+          {/* Fork SVG paths — demo only */}
+          {showBranchScaffold && (
           <svg
             style={{
               position: "absolute",
@@ -662,7 +713,9 @@ function HorizontalTimeline({
               strokeWidth="2"
             />
           </svg>
+          )}
 
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -691,6 +744,8 @@ function HorizontalTimeline({
               Decision · return offer?
             </span>
           </div>
+          )}
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -706,6 +761,7 @@ function HorizontalTimeline({
           >
             Reconverge
           </div>
+          )}
 
           {branchA.map((m) => {
             const i = ages.indexOf(m.age);
@@ -734,6 +790,7 @@ function HorizontalTimeline({
             );
           })}
 
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -763,6 +820,8 @@ function HorizontalTimeline({
               Path A · if offer
             </span>
           </div>
+          )}
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -792,7 +851,137 @@ function HorizontalTimeline({
               Path B · if not
             </span>
           </div>
+          )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyTimeline({
+  currentAge,
+  birthYear,
+  onAdd,
+}: {
+  currentAge: number;
+  birthYear: number;
+  onAdd: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderTop: "1px solid var(--line-cool)",
+        borderBottom: "1px solid var(--line-cool)",
+        background: "var(--bg-1)",
+        padding: "120px 64px",
+        minHeight: 420,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 36,
+      }}
+    >
+      {/* Faded spine that runs the full width */}
+      <div
+        style={{
+          position: "absolute",
+          left: 80,
+          right: 80,
+          top: "50%",
+          height: 1.5,
+          background: "var(--line)",
+          opacity: 0.6,
+        }}
+      />
+
+      {/* Centered age dot */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: "var(--gold)",
+            boxShadow: "0 0 0 6px rgba(212,168,90,0.18)",
+          }}
+        />
+        <div
+          style={{
+            fontFamily: "var(--font-geist-sans)",
+            fontWeight: 300,
+            fontSize: 38,
+            letterSpacing: "-0.04em",
+            color: "var(--gold)",
+            lineHeight: 1,
+          }}
+        >
+          {currentAge}
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-geist-mono)",
+            fontSize: 10,
+            color: "var(--gold-soft)",
+            letterSpacing: "0.08em",
+          }}
+        >
+          NOW · {birthYear + currentAge}
+        </div>
+      </div>
+
+      {/* Inviting prompt */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          textAlign: "center",
+          maxWidth: 460,
+          marginTop: 8,
+        }}
+      >
+        <Eyebrow style={{ marginBottom: 12 }}>The first stroke</Eyebrow>
+        <div
+          style={{
+            fontFamily: "var(--font-geist-sans)",
+            fontWeight: 500,
+            fontSize: 22,
+            letterSpacing: "-0.02em",
+            color: "var(--ink-0)",
+            marginBottom: 10,
+          }}
+        >
+          A blank line, looking forward.
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: "var(--ink-2)",
+            lineHeight: 1.6,
+            marginBottom: 22,
+          }}
+        >
+          Place a single decision, event, or goal — anything you&rsquo;re
+          thinking about over the next decade. The arc draws itself from
+          there.
+        </div>
+        <Primary onClick={onAdd}>
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          >
+            <Icon kind="plus" size={13} /> Add your first milestone
+          </span>
+        </Primary>
       </div>
     </div>
   );
@@ -805,6 +994,8 @@ interface TimelineViewProps {
   setView: (v: "timeline" | "bucket") => void;
   onSelectMilestone: (m: ArcMilestone) => void;
   onAddAtAge: (age: number) => void;
+  showBranchScaffold?: boolean;
+  header?: React.ReactNode;
 }
 
 export function TimelineView({
@@ -814,6 +1005,8 @@ export function TimelineView({
   setView,
   onSelectMilestone,
   onAddAtAge,
+  showBranchScaffold = false,
+  header,
 }: TimelineViewProps) {
   return (
     <div
@@ -823,29 +1016,34 @@ export function TimelineView({
         paddingBottom: 60,
       }}
     >
-      <TimelineHeader
-        user={user}
-        view={view}
-        setView={setView}
-        onAdd={() => onAddAtAge(user.currentAge)}
-      />
+      {header ?? (
+        <TimelineHeader
+          user={user}
+          view={view}
+          setView={setView}
+          onAdd={() => onAddAtAge(user.currentAge)}
+        />
+      )}
       <HorizontalTimeline
         user={user}
         milestones={milestones}
         onSelectMilestone={onSelectMilestone}
         onAddAtAge={onAddAtAge}
+        showBranchScaffold={showBranchScaffold}
       />
-      <div
-        style={{
-          textAlign: "center",
-          padding: "40px 80px",
-          fontFamily: "var(--font-geist-sans)",
-          fontSize: 13,
-          color: "var(--ink-3)",
-        }}
-      >
-        Tomorrow is also a draft.
-      </div>
+      {milestones.length > 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px 80px",
+            fontFamily: "var(--font-geist-sans)",
+            fontSize: 13,
+            color: "var(--ink-3)",
+          }}
+        >
+          Tomorrow is also a draft.
+        </div>
+      )}
     </div>
   );
 }

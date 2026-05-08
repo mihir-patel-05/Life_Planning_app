@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db, plans } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -38,10 +38,36 @@ export async function createPlan(
     title: formData.get("title"),
     description: formData.get("description"),
     color: formData.get("color"),
+    birthYear: formData.get("birthYear"),
+    philosophy: formData.get("philosophy"),
   });
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   const userId = await requireUserId();
+
+  // Inherit birthYear / philosophy from the user's most recent plan when not
+  // explicitly supplied — this keeps subsequent "New plan" dialogs simple
+  // since onboarding has already collected these values.
+  let { birthYear, philosophy } = parsed.data;
+  if (birthYear === undefined || philosophy === undefined) {
+    const [latest] = await db
+      .select({
+        birthYear: plans.birthYear,
+        philosophy: plans.philosophy,
+      })
+      .from(plans)
+      .where(eq(plans.userId, userId))
+      .orderBy(desc(plans.createdAt))
+      .limit(1);
+    if (latest) {
+      if (birthYear === undefined && latest.birthYear !== null) {
+        birthYear = latest.birthYear;
+      }
+      if (philosophy === undefined && latest.philosophy !== null) {
+        philosophy = latest.philosophy;
+      }
+    }
+  }
 
   let newId: string;
   try {
@@ -52,6 +78,8 @@ export async function createPlan(
         title: parsed.data.title,
         description: parsed.data.description,
         color: parsed.data.color,
+        birthYear: birthYear ?? null,
+        philosophy: philosophy ?? null,
       })
       .returning({ id: plans.id });
     if (!row) return { error: "Could not create plan" };
@@ -74,6 +102,8 @@ export async function updatePlan(
     title: formData.get("title"),
     description: formData.get("description"),
     color: formData.get("color"),
+    birthYear: formData.get("birthYear"),
+    philosophy: formData.get("philosophy"),
   });
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -86,6 +116,8 @@ export async function updatePlan(
         title: parsed.data.title,
         description: parsed.data.description,
         color: parsed.data.color,
+        birthYear: parsed.data.birthYear ?? null,
+        philosophy: parsed.data.philosophy ?? null,
       })
       .where(and(eq(plans.id, parsed.data.id), eq(plans.userId, userId)))
       .returning({ id: plans.id });
