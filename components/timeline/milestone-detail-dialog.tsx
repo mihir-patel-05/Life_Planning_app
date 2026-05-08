@@ -63,6 +63,28 @@ export function MilestoneDetailDialog({
 
   const targetDate = targetDateFromAge(birthYear, age, season);
 
+  const titleRef = React.useRef<HTMLInputElement>(null);
+
+  // Esc to close, plus move focus to the title input on open and restore it
+  // to the previously focused element on close.
+  React.useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    titleRef.current?.focus();
+    titleRef.current?.select();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [onClose]);
+
   return (
     <div
       onClick={onClose}
@@ -80,6 +102,10 @@ export function MilestoneDetailDialog({
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="milestone-title"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 720,
@@ -137,6 +163,8 @@ export function MilestoneDetailDialog({
                 </span>
               </div>
               <input
+                ref={titleRef}
+                id="milestone-title"
                 name="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
