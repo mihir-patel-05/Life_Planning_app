@@ -108,6 +108,7 @@ export async function updateBucketItem(
       .where(
         and(
           eq(bucketItems.id, parsed.data.id),
+          eq(bucketItems.planId, parsed.data.planId),
           eq(bucketItems.userId, userId),
         ),
       )
@@ -141,6 +142,7 @@ export async function toggleBucketItem(formData: FormData): Promise<void> {
       .where(
         and(
           eq(bucketItems.id, parsed.data.id),
+          eq(bucketItems.planId, parsed.data.planId),
           eq(bucketItems.userId, userId),
         ),
       );
@@ -166,6 +168,7 @@ export async function deleteBucketItem(formData: FormData): Promise<void> {
       .where(
         and(
           eq(bucketItems.id, parsed.data.id),
+          eq(bucketItems.planId, parsed.data.planId),
           eq(bucketItems.userId, userId),
         ),
       );
