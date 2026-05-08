@@ -333,6 +333,7 @@ interface HorizontalTimelineProps {
   milestones: ArcMilestone[];
   onSelectMilestone: (m: ArcMilestone) => void;
   onAddAtAge: (age: number) => void;
+  showBranchScaffold?: boolean;
 }
 
 function HorizontalTimeline({
@@ -340,16 +341,27 @@ function HorizontalTimeline({
   milestones,
   onSelectMilestone,
   onAddAtAge,
+  showBranchScaffold = false,
 }: HorizontalTimelineProps) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const [hoverAge, setHoverAge] = React.useState<number | null>(null);
 
   const occupiedAges = new Set(milestones.map((m) => m.age));
-  const decadeAges = [20, 30, 40, 50, 60, 70];
+  // Always anchor on the current age and offer a 30-year forward horizon at
+  // decade boundaries so a brand-new (empty) plan still has somewhere to
+  // place a first milestone.
+  const decadeAnchors: number[] = [];
+  for (
+    let a = Math.ceil(user.currentAge / 10) * 10;
+    a <= user.currentAge + 30;
+    a += 10
+  ) {
+    if (a > user.currentAge) decadeAnchors.push(a);
+  }
   const anchors = new Set<number>([
     ...occupiedAges,
     user.currentAge,
-    ...decadeAges,
+    ...decadeAnchors,
   ]);
   const ages = [...anchors].sort((a, b) => a - b);
 
@@ -362,7 +374,8 @@ function HorizontalTimeline({
   React.useEffect(() => {
     if (scrollRef.current) {
       const nowIdx = ages.indexOf(user.currentAge);
-      scrollRef.current.scrollLeft = Math.max(0, ageX(nowIdx) - 280);
+      const safeIdx = nowIdx >= 0 ? nowIdx : 0;
+      scrollRef.current.scrollLeft = Math.max(0, ageX(safeIdx) - 280);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -380,15 +393,36 @@ function HorizontalTimeline({
     sideMap[a] = i % 2 === 0 ? "below" : "above";
   });
 
-  const branchAges = [22, 23, 24];
+  const branchAges = showBranchScaffold ? [22, 23, 24] : [];
   const branchAIdxs = branchAges.map((a) => ages.indexOf(a));
-  const branchAStart = ageX(branchAIdxs[0]) + 100;
-  const branchAEnd = ageX(branchAIdxs[branchAIdxs.length - 1]) + 100;
-  const forkStartX = ageX(ages.indexOf(21)) + 100;
-  const reconvergeX = ageX(ages.indexOf(25)) + 100;
+  const branchAStart = showBranchScaffold ? ageX(branchAIdxs[0]) + 100 : 0;
+  const branchAEnd = showBranchScaffold
+    ? ageX(branchAIdxs[branchAIdxs.length - 1]) + 100
+    : 0;
+  const forkStartX = showBranchScaffold ? ageX(ages.indexOf(21)) + 100 : 0;
+  const reconvergeX = showBranchScaffold ? ageX(ages.indexOf(25)) + 100 : 0;
 
-  const branchA = milestones.filter((m) => m.branch === "a");
-  const branchB = milestones.filter((m) => m.branch === "b");
+  // For real plans we don't render the dramatic fork/reconverge SVG (that's
+  // bound to specific Maya-demo ages). Branch milestones still get coloured
+  // borders, but they sit in the regular trunk slots above/below the spine.
+  const branchA = showBranchScaffold
+    ? milestones.filter((m) => m.branch === "a")
+    : [];
+  const branchB = showBranchScaffold
+    ? milestones.filter((m) => m.branch === "b")
+    : [];
+
+  // Without the scaffold, branch=a/b cards fall back into the trunk layout so
+  // they're not lost. The HCard styling keeps the gold "active" / line-through
+  // "done" treatments regardless.
+  if (!showBranchScaffold) {
+    milestones
+      .filter((m) => m.branch !== null)
+      .forEach((m) => {
+        trunkByAge[m.age] = trunkByAge[m.age] || [];
+        trunkByAge[m.age].push(m);
+      });
+  }
 
   return (
     <div
@@ -475,7 +509,8 @@ function HorizontalTimeline({
               position: "absolute",
               left: 0,
               top: SPINE_Y - 1,
-              width: ageX(ages.indexOf(user.currentAge)) + 100,
+              width:
+                ageX(Math.max(0, ages.indexOf(user.currentAge))) + 100,
               height: 2.5,
               background: "var(--gold)",
               opacity: 0.9,
@@ -610,7 +645,8 @@ function HorizontalTimeline({
               ));
             })}
 
-          {/* Fork SVG paths */}
+          {/* Fork SVG paths — demo only */}
+          {showBranchScaffold && (
           <svg
             style={{
               position: "absolute",
@@ -662,7 +698,9 @@ function HorizontalTimeline({
               strokeWidth="2"
             />
           </svg>
+          )}
 
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -691,6 +729,8 @@ function HorizontalTimeline({
               Decision · return offer?
             </span>
           </div>
+          )}
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -706,6 +746,7 @@ function HorizontalTimeline({
           >
             Reconverge
           </div>
+          )}
 
           {branchA.map((m) => {
             const i = ages.indexOf(m.age);
@@ -734,6 +775,7 @@ function HorizontalTimeline({
             );
           })}
 
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -763,6 +805,8 @@ function HorizontalTimeline({
               Path A · if offer
             </span>
           </div>
+          )}
+          {showBranchScaffold && (
           <div
             style={{
               position: "absolute",
@@ -792,6 +836,7 @@ function HorizontalTimeline({
               Path B · if not
             </span>
           </div>
+          )}
         </div>
       </div>
     </div>
@@ -805,6 +850,8 @@ interface TimelineViewProps {
   setView: (v: "timeline" | "bucket") => void;
   onSelectMilestone: (m: ArcMilestone) => void;
   onAddAtAge: (age: number) => void;
+  showBranchScaffold?: boolean;
+  header?: React.ReactNode;
 }
 
 export function TimelineView({
@@ -814,6 +861,8 @@ export function TimelineView({
   setView,
   onSelectMilestone,
   onAddAtAge,
+  showBranchScaffold = false,
+  header,
 }: TimelineViewProps) {
   return (
     <div
@@ -823,17 +872,20 @@ export function TimelineView({
         paddingBottom: 60,
       }}
     >
-      <TimelineHeader
-        user={user}
-        view={view}
-        setView={setView}
-        onAdd={() => onAddAtAge(user.currentAge)}
-      />
+      {header ?? (
+        <TimelineHeader
+          user={user}
+          view={view}
+          setView={setView}
+          onAdd={() => onAddAtAge(user.currentAge)}
+        />
+      )}
       <HorizontalTimeline
         user={user}
         milestones={milestones}
         onSelectMilestone={onSelectMilestone}
         onAddAtAge={onAddAtAge}
+        showBranchScaffold={showBranchScaffold}
       />
       <div
         style={{
