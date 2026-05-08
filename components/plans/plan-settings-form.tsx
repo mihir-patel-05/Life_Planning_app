@@ -27,6 +27,8 @@ interface PlanSettingsFormProps {
     title: string;
     description: string | null;
     color: string | null;
+    birthYear: number | null;
+    philosophy: string | null;
   };
 }
 
@@ -68,6 +70,28 @@ export function PlanSettingsForm({ plan }: PlanSettingsFormProps) {
           defaultValue={plan.description ?? ""}
           as="textarea"
         />
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 2fr",
+            gap: 16,
+          }}
+        >
+          <Field
+            label="Birth year"
+            name="birthYear"
+            type="number"
+            defaultValue={plan.birthYear != null ? String(plan.birthYear) : ""}
+          />
+          <Field
+            label="Philosophy / north star"
+            name="philosophy"
+            maxLength={500}
+            defaultValue={plan.philosophy ?? ""}
+            as="textarea"
+          />
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Eyebrow>Accent color</Eyebrow>
@@ -372,6 +396,7 @@ interface FieldProps {
   maxLength?: number;
   defaultValue?: string;
   as?: "input" | "textarea";
+  type?: string;
 }
 
 function Field({
@@ -381,6 +406,7 @@ function Field({
   maxLength,
   defaultValue,
   as = "input",
+  type = "text",
 }: FieldProps) {
   const sharedStyle: React.CSSProperties = {
     width: "100%",
@@ -409,6 +435,7 @@ function Field({
       ) : (
         <input
           name={name}
+          type={type}
           required={required}
           maxLength={maxLength}
           defaultValue={defaultValue}

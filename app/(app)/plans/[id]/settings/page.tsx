@@ -72,6 +72,8 @@ export default async function PlanSettingsPage({
             title: plan.title,
             description: plan.description,
             color: plan.color,
+            birthYear: plan.birthYear,
+            philosophy: plan.philosophy,
           }}
         />
       </main>

@@ -96,27 +96,23 @@ export default async function DashboardPage() {
           <CreatePlanDialog />
         </div>
 
-        {userPlans.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {userPlans.map((p) => (
-              <PlanCard
-                key={p.id}
-                href={`/plans/${p.id}`}
-                title={p.title}
-                description={p.description}
-                color={p.color}
-              />
-            ))}
-          </div>
-        )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {userPlans.map((p) => (
+            <PlanCard
+              key={p.id}
+              href={`/plans/${p.id}`}
+              title={p.title}
+              description={p.description}
+              color={p.color}
+            />
+          ))}
+        </div>
 
         <div style={{ marginTop: 48 }}>
           <Eyebrow style={{ marginBottom: 14 }}>Sample arc</Eyebrow>
@@ -141,43 +137,3 @@ export default async function DashboardPage() {
   );
 }
 
-function EmptyState() {
-  return (
-    <div
-      style={{
-        padding: "56px 32px",
-        background: "var(--bg-2)",
-        border: "1px dashed var(--line)",
-        borderRadius: 14,
-        textAlign: "center",
-      }}
-    >
-      <Eyebrow style={{ marginBottom: 14 }}>Empty canvas</Eyebrow>
-      <div
-        style={{
-          fontFamily: "var(--font-geist-sans)",
-          fontWeight: 500,
-          fontSize: 22,
-          letterSpacing: "-0.02em",
-          color: "var(--ink-0)",
-          marginBottom: 10,
-        }}
-      >
-        No plans yet.
-      </div>
-      <div
-        style={{
-          fontSize: 13,
-          color: "var(--ink-2)",
-          lineHeight: 1.6,
-          maxWidth: 420,
-          margin: "0 auto",
-        }}
-      >
-        Start with a single thread — career, education, family, anything you’re
-        thinking about over the next decade. You can split it into branches
-        later.
-      </div>
-    </div>
-  );
-}
