@@ -147,25 +147,25 @@ function PlanTimelineHeader({
     >
       <div>
         <Eyebrow style={{ marginBottom: 14 }}>{user.name}</Eyebrow>
-        <h1
-          style={{
-            fontFamily: "var(--font-geist-sans)",
-            fontWeight: 500,
-            fontSize: 44,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.05,
-            margin: 0,
-            color: "var(--ink-0)",
-            maxWidth: 760,
-          }}
-        >
-          {philosophy && philosophy.trim().length > 0
-            ? philosophy
-            : "A long, considered life — drawn one decision at a time."}
-        </h1>
+        {philosophy && philosophy.trim().length > 0 && (
+          <h1
+            style={{
+              fontFamily: "var(--font-geist-sans)",
+              fontWeight: 500,
+              fontSize: 44,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.05,
+              margin: 0,
+              color: "var(--ink-0)",
+              maxWidth: 760,
+            }}
+          >
+            {philosophy}
+          </h1>
+        )}
         <div
           style={{
-            marginTop: 16,
+            marginTop: philosophy && philosophy.trim().length > 0 ? 16 : 0,
             fontFamily: "var(--font-geist-mono)",
             fontSize: 11,
             color: "var(--ink-3)",

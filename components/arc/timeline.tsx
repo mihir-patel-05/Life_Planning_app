@@ -346,17 +346,20 @@ function HorizontalTimeline({
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const [hoverAge, setHoverAge] = React.useState<number | null>(null);
 
+  const isEmpty = milestones.length === 0;
   const occupiedAges = new Set(milestones.map((m) => m.age));
-  // Always anchor on the current age and offer a 30-year forward horizon at
-  // decade boundaries so a brand-new (empty) plan still has somewhere to
-  // place a first milestone.
+  // When the plan has milestones we anchor on a 30-year forward horizon at
+  // decade boundaries; when it's empty we show only the current age so the
+  // canvas reads as a clean starting point rather than a future skeleton.
   const decadeAnchors: number[] = [];
-  for (
-    let a = Math.ceil(user.currentAge / 10) * 10;
-    a <= user.currentAge + 30;
-    a += 10
-  ) {
-    if (a > user.currentAge) decadeAnchors.push(a);
+  if (!isEmpty) {
+    for (
+      let a = Math.ceil(user.currentAge / 10) * 10;
+      a <= user.currentAge + 30;
+      a += 10
+    ) {
+      if (a > user.currentAge) decadeAnchors.push(a);
+    }
   }
   const anchors = new Set<number>([
     ...occupiedAges,
@@ -424,6 +427,16 @@ function HorizontalTimeline({
       });
   }
 
+  if (isEmpty) {
+    return (
+      <EmptyTimeline
+        currentAge={user.currentAge}
+        birthYear={user.birthYear}
+        onAdd={() => onAddAtAge(user.currentAge)}
+      />
+    );
+  }
+
   return (
     <div
       style={{
@@ -458,24 +471,26 @@ function HorizontalTimeline({
         }}
       />
 
-      <div
-        style={{
-          position: "absolute",
-          top: 24,
-          right: 80,
-          zIndex: 6,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          fontFamily: "var(--font-geist-mono)",
-          fontSize: 10,
-          letterSpacing: "0.1em",
-          color: "var(--ink-3)",
-          textTransform: "uppercase",
-        }}
-      >
-        Scroll <Icon kind="arrow" size={12} />
-      </div>
+      {!isEmpty && (
+        <div
+          style={{
+            position: "absolute",
+            top: 24,
+            right: 80,
+            zIndex: 6,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            fontFamily: "var(--font-geist-mono)",
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            color: "var(--ink-3)",
+            textTransform: "uppercase",
+          }}
+        >
+          Scroll <Icon kind="arrow" size={12} />
+        </div>
+      )}
 
       <div
         ref={scrollRef}
@@ -843,6 +858,135 @@ function HorizontalTimeline({
   );
 }
 
+function EmptyTimeline({
+  currentAge,
+  birthYear,
+  onAdd,
+}: {
+  currentAge: number;
+  birthYear: number;
+  onAdd: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderTop: "1px solid var(--line-cool)",
+        borderBottom: "1px solid var(--line-cool)",
+        background: "var(--bg-1)",
+        padding: "120px 64px",
+        minHeight: 420,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 36,
+      }}
+    >
+      {/* Faded spine that runs the full width */}
+      <div
+        style={{
+          position: "absolute",
+          left: 80,
+          right: 80,
+          top: "50%",
+          height: 1.5,
+          background: "var(--line)",
+          opacity: 0.6,
+        }}
+      />
+
+      {/* Centered age dot */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: "var(--gold)",
+            boxShadow: "0 0 0 6px rgba(212,168,90,0.18)",
+          }}
+        />
+        <div
+          style={{
+            fontFamily: "var(--font-geist-sans)",
+            fontWeight: 300,
+            fontSize: 38,
+            letterSpacing: "-0.04em",
+            color: "var(--gold)",
+            lineHeight: 1,
+          }}
+        >
+          {currentAge}
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-geist-mono)",
+            fontSize: 10,
+            color: "var(--gold-soft)",
+            letterSpacing: "0.08em",
+          }}
+        >
+          NOW · {birthYear + currentAge}
+        </div>
+      </div>
+
+      {/* Inviting prompt */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          textAlign: "center",
+          maxWidth: 460,
+          marginTop: 8,
+        }}
+      >
+        <Eyebrow style={{ marginBottom: 12 }}>The first stroke</Eyebrow>
+        <div
+          style={{
+            fontFamily: "var(--font-geist-sans)",
+            fontWeight: 500,
+            fontSize: 22,
+            letterSpacing: "-0.02em",
+            color: "var(--ink-0)",
+            marginBottom: 10,
+          }}
+        >
+          A blank line, looking forward.
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: "var(--ink-2)",
+            lineHeight: 1.6,
+            marginBottom: 22,
+          }}
+        >
+          Place a single decision, event, or goal — anything you&rsquo;re
+          thinking about over the next decade. The arc draws itself from
+          there.
+        </div>
+        <Primary onClick={onAdd}>
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          >
+            <Icon kind="plus" size={13} /> Add your first milestone
+          </span>
+        </Primary>
+      </div>
+    </div>
+  );
+}
+
 interface TimelineViewProps {
   user: ArcUser;
   milestones: ArcMilestone[];
@@ -887,17 +1031,19 @@ export function TimelineView({
         onAddAtAge={onAddAtAge}
         showBranchScaffold={showBranchScaffold}
       />
-      <div
-        style={{
-          textAlign: "center",
-          padding: "40px 80px",
-          fontFamily: "var(--font-geist-sans)",
-          fontSize: 13,
-          color: "var(--ink-3)",
-        }}
-      >
-        Tomorrow is also a draft.
-      </div>
+      {milestones.length > 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px 80px",
+            fontFamily: "var(--font-geist-sans)",
+            fontSize: 13,
+            color: "var(--ink-3)",
+          }}
+        >
+          Tomorrow is also a draft.
+        </div>
+      )}
     </div>
   );
 }
