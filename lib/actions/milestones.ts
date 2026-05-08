@@ -51,6 +51,9 @@ export async function createMilestone(
     completedDate: formData.get("completedDate"),
     status: formData.get("status"),
     category: formData.get("category"),
+    ageAt: formData.get("ageAt"),
+    season: formData.get("season"),
+    branch: formData.get("branch"),
   });
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -69,6 +72,9 @@ export async function createMilestone(
       completedDate: parsed.data.completedDate,
       status: parsed.data.status,
       category: parsed.data.category,
+      ageAt: parsed.data.ageAt ?? null,
+      season: parsed.data.season ?? null,
+      branch: parsed.data.branch ?? null,
     });
   } catch (e) {
     console.error("[milestones.createMilestone] insert failed", e);
@@ -91,6 +97,9 @@ export async function updateMilestone(
     completedDate: formData.get("completedDate"),
     status: formData.get("status"),
     category: formData.get("category"),
+    ageAt: formData.get("ageAt"),
+    season: formData.get("season"),
+    branch: formData.get("branch"),
   });
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -107,6 +116,9 @@ export async function updateMilestone(
         completedDate: parsed.data.completedDate,
         status: parsed.data.status,
         category: parsed.data.category,
+        ageAt: parsed.data.ageAt ?? null,
+        season: parsed.data.season ?? null,
+        branch: parsed.data.branch ?? null,
       })
       .where(
         and(eq(milestones.id, parsed.data.id), eq(milestones.userId, userId)),
