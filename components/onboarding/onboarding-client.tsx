@@ -21,13 +21,22 @@ export function OnboardingClient() {
   const formRef = React.useRef<HTMLFormElement>(null);
   const [age, setAge] = React.useState(21);
   const [philosophy, setPhilosophy] = React.useState("");
+  const [isSubmitPending, setIsSubmitPending] = React.useState(false);
 
   const handleFinish = (data: OnboardingPayload) => {
     setAge(data.age);
     setPhilosophy(data.philosophy);
-    // Defer to the next tick so the hidden inputs are committed before submit.
-    queueMicrotask(() => formRef.current?.requestSubmit());
+    setIsSubmitPending(true);
   };
+
+  // Submit only after React has committed the new age/philosophy values into
+  // the hidden inputs — driving the submit from an effect avoids the stale
+  // form-data race that queueMicrotask had.
+  React.useEffect(() => {
+    if (!isSubmitPending) return;
+    formRef.current?.requestSubmit();
+    setIsSubmitPending(false);
+  }, [age, philosophy, isSubmitPending]);
 
   return (
     <>
